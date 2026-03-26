@@ -1,0 +1,11 @@
+HELP.md
+
+### GiGaIDE ###
+.gigaide
+.idea
+.vent
+WorkingWithFiles.iml
+final.txt
+
+### VS Code ###
+.vscode/
