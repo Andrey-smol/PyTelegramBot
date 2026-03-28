@@ -1,5 +1,3 @@
-# pip install psycopg2
-# pip install sqlalchemy
 import json
 from typing import Optional
 
@@ -7,8 +5,9 @@ import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 
 from config.config import Config_
+from date_time.date_time import DateTime
 from exception.exception import MyException
-from files.file_json import write_file_data
+from files.file_json import write_file_data, get_tuple_start_words
 from model.db_base import Base
 from model.user_word import UserWord
 from model.users import Users
@@ -16,6 +15,8 @@ from model.words import Words
 
 
 class Repository:
+    __tuple_start_words = []
+
     def __init__(self):
         self.__driver = Config_.db_driver()
         self.__host = Config_.db_host()
@@ -35,7 +36,6 @@ class Repository:
 
     def __get_dsn(self) -> str:
         dsn = f'{self.__driver}://{self.__user}:{self.__password}@{self.__host}/{self.__db_name}'
-        print(dsn)
         return dsn
 
     def __make_session(self):
@@ -95,6 +95,8 @@ class Repository:
             raise MyException('Repository.get_word_by_user_id', f'error get word for {user_id=}: {e}')
 
     def del_word(self, user_id, word) -> bool:
+        if word in Repository.__tuple_start_words:
+            return False
         try:
             with self.session as s:
                 id_ = self.__get_user_id(s, user_id)
@@ -123,6 +125,21 @@ class Repository:
                                     .all())]
             return None
 
+    def get_count_words_user(self, user_id) -> int:
+        with self.session as s:
+            return (s.query(Words.id)
+                    .join(UserWord, Words.id == UserWord.id_word)
+                    .join(Users, Users.id == UserWord.id_user)
+                    .filter(Users.user_id_bot == str(user_id))
+                    .count())
+
+    def init_start_words_for_user(self, user_id) -> int:
+        with self.session as s:
+            id_ = self.__add_user(s, user_id)
+            if id_:
+                return self.get_count_words_user(user_id)
+            return 0
+
     @staticmethod
     def create_tables(engine):
         # Base.metadata.drop_all(engine)
@@ -130,9 +147,10 @@ class Repository:
 
     def filling_table_from_file(self):
         write_file_data()
+        Repository.__tuple_start_words = get_tuple_start_words()
         with self.session as s:
-            query = s.query(Words.id).count()
-            if query >= 10:
+            count = s.query(Words.id).count()
+            if count >= len(Repository.__tuple_start_words):
                 return
             with open('files/data.json', encoding='utf-8') as fr:
                 data = json.load(fr)
@@ -143,26 +161,20 @@ class Repository:
                     s.add(model(**record.get('fields')))
             s.commit()
 
-    def get_count_words_user(self, user_id) -> int:
-        with self.session as s:
-            return (s.query(Words.id)
-                    .join(UserWord, Words.id == UserWord.id_word)
-                    .join(Users, Users.id == UserWord.id_user)
-                    .filter(Users.user_id == str(user_id))
-                    .count())
 
     @staticmethod
     def __add_user(session_, user_id) -> Optional[int]:
         if user_id is None:
-            raise MyException('Repository.add_user', f'error add {user_id=}')
+            return None
         id_ = Repository.__get_user_id(session_, user_id)
         if not id_:
-            user = Users(user_id=str(user_id))
+            user = Users(user_id_bot=str(user_id), date_registration=DateTime.get_date_time_now())
             session_.add(user)
             session_.flush()
+            if not user:
+                return None
             id_ = user.id
-            # query = session_.query(Words.id).filter(Words.id > 0, Words.id < 13).all()
-            result = session_.query(Words.id).all()
+            result = session_.query(Words.id).filter(Words.word_russian.in_(Repository.__tuple_start_words)).all()
             for v in result:
                 session_.add(UserWord(id_user=id_, id_word=v[0]))
                 session_.flush()
@@ -171,8 +183,8 @@ class Repository:
 
     @staticmethod
     def __get_user_id(session_, user_id):
-        q = session_.query(Users).filter(Users.user_id == str(user_id)).one_or_none()
-        return None if q is None else q.id
+        user = session_.query(Users).filter(Users.user_id_bot == str(user_id)).one_or_none()
+        return None if user is None else user.id
 
     @staticmethod
     def __get_id_word_by_word(session_, word_rus) -> Optional[int]:

@@ -1,4 +1,5 @@
 import sqlalchemy as sq
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from model.db_base import Base
@@ -15,3 +16,6 @@ class UserWord(Base):
 
     user = relationship(Users, backref="user_word")
     word = relationship(Words, backref="user_word")
+
+    __table_args__ = (UniqueConstraint('id_user', 'id_word', name='uq_user_word'),)
+

@@ -5,6 +5,8 @@ class Config_:
     __BOT_TOKEN = os.getenv('BOT_TOKEN', '')
     __YANDEX_DICT_TOKEN = os.getenv('YANDEX_DICT_TOKEN',
                                     '')
+    __URL_YANDEX_DICTIONARY = 'https://dictionary.yandex.net/api/v1/dicservice.json/lookup'
+    __TELEGRAM_API = "https://api.telegram.org"
 
     __DB_DRIVER = os.getenv('DB_DRIVER', 'postgresql')
     __DB_HOST = os.getenv('DB_HOST', 'localhost:5432')  # localhost будет использоваться по умолчанию
@@ -39,3 +41,11 @@ class Config_:
     @classmethod
     def db_name(cls):
         return cls.__DB_NAME
+
+    @classmethod
+    def telegram_api(cls):
+        return cls.__TELEGRAM_API
+
+    @classmethod
+    def url_yandex_dictionary(cls):
+        return cls.__URL_YANDEX_DICTIONARY

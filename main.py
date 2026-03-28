@@ -1,3 +1,5 @@
+import sys
+
 from controller.bot_controller import BotController
 from exception.exception import MyException
 from log.logger import OperationLogger
@@ -8,17 +10,17 @@ if __name__ == '__main__':
     print('bot running')
     logger = OperationLogger()
     logger.log("Запуск телеграмм бота")
-    repository = Repository()
-    service = Service(repository)
-    controller = BotController(service)
     try:
-        controller.start_bot()
+        BotController._check_telegram_token()
+        controller_ = BotController(Service(Repository()))
+        controller_.start_bot()
     except MyException as me:
         logger.log(me.message)
         print(me.message)
-    except BaseException as e:
-        logger.log(f'Исключение BaseException - {e}')
+    except Exception as e:
+        logger.log(f'Error: - {e}')
         print(e)
     finally:
         logger.flush_log()
-        controller.stop_bot_()
+        controller_.stop_bot_()
+    sys.exit(1)

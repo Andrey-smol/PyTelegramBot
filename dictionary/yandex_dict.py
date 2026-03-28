@@ -4,7 +4,7 @@ from config.config import Config_
 
 
 class YandexDictionary:
-    __URL = 'https://dictionary.yandex.net/api/v1/dicservice.json/lookup'
+    __URL = Config_.url_yandex_dictionary()
     __TOKEN = Config_.yandex_dict_token()
 
     @classmethod

@@ -1,19 +1,22 @@
 import random
 
+import requests
 import telebot
 from telebot import types, State, custom_filters
 
 from config.config import Config_
+from exception.exception import MyException
 from log.logger import OperationLogger
-from model.enum_command import CommandsBot
-from model.enum_state import StateUser
-from model.user_bot import UserBot
+from utils.enum_command import CommandsBot
+from utils.enum_state import StateUser
+from utils.user_bot import UserBot
 
 
 class BotController:
+    __TELEGRAM_API = Config_.telegram_api()
     __TOKEN = Config_.bot_token()
     __COMMANDS = {'NEXT': 'Дальше ⏭', 'DELETE_WORD': 'Удалить слово🔙', 'ADD_WORD': 'Добавить слово ➕'}
-    __NEED_COMMAND_DICT_STR = "Надо сначала ввести команду: /dict"
+    __NEED_COMMAND_DICT_STR = "Надо сначала ввести команду: /start"
 
     def __init__(self, service):
         self.__service = service
@@ -26,9 +29,8 @@ class BotController:
         self.users = {}
         self.logger = OperationLogger()
 
-        self.__bot.message_handler(commands=['start'])(self._send_welcome)
+        self.__bot.message_handler(commands=['start'])(self._start_dict)
         self.__bot.message_handler(commands=['help'])(self._send_help)
-        self.__bot.message_handler(commands=['dict'])(self._start_dict)
         self.__bot.message_handler(func=lambda m: m.text == self.__COMMANDS['NEXT'])(self._next_cards)
         self.__bot.message_handler(func=lambda m: m.text == self.__COMMANDS['DELETE_WORD'])(self._delete_word_menu)
         self.__bot.message_handler(func=lambda m: m.text == self.__COMMANDS['ADD_WORD'])(self._add_word_menu)
@@ -46,26 +48,29 @@ class BotController:
     def buttons(self):
         return self.__buttons
 
+    @staticmethod
+    def _check_telegram_token(timeout_: float = 5.0):
+        if not BotController.__TOKEN:
+            raise MyException("_check_telegram_token", "Error: Telegram token is empty")
+        try:
+            resp = requests.get(f"{BotController.__TELEGRAM_API}/bot{BotController.__TOKEN}/getMe", timeout=timeout_)
+            if resp.status_code != 200:
+                raise MyException("_check_telegram_token", f"Telegram API returned status {resp.status_code}")
+            data = resp.json()
+            if not data.get("ok"):
+                raise MyException("_check_telegram_token", f"Telegram API response not ok: {data}")
+        except requests.RequestException as e:
+            raise MyException("_check_telegram_token", f"Error: Telegram token check failed: {e}")
+
     def start_bot(self):
         self.bot.add_custom_filter(custom_filters.StateFilter(self.bot))
-        self.bot.infinity_polling()
+        self.bot.infinity_polling(skip_pending=True, timeout=10, long_polling_timeout=5)
 
     def stop_bot_(self):
         if self.bot:
+            print('stop_bot_')
+            self.logger.log('Остановка бота')
             self.bot.stop_polling()
-
-    def _send_welcome(self, message):
-        """
-        Handler of the /start command
-        :param message:
-        :return:
-        """
-        self.logger.log(f'user_id={message.from_user.id}, chat_id={message.chat.id} - команда /start')
-        user_id = message.from_user.id
-        user_bot = self.users.setdefault(user_id, UserBot(user_id, message.chat.id))
-        user_bot.state_bot = StateUser.start
-        self.bot.reply_to(message, 'Привет, я учебный бот изучения английских слов!')
-        self.bot.send_message(message.chat.id, 'Привет')
 
     def _send_help(self, message):
         """
@@ -89,23 +94,26 @@ class BotController:
 
     def _start_dict(self, message):
         """
-        Handler of the /dict command
+        Handler of the /start command
         :param message:
         :return:
         """
-        self.logger.log(f'user_id={message.from_user.id}, chat_id={message.chat.id} - команда /dict')
-        user_bot = self.users.setdefault(message.from_user.id, UserBot(message.from_user.id, message.chat.id))
-        user_bot.state_bot = StateUser.dict
-
+        self.logger.log(f'user_id={message.from_user.id}, chat_id={message.chat.id} - команда /start')
         chat_id = message.chat.id
         user_id = message.from_user.id
-        self.bot.send_message(chat_id, "Hello, stranger, let study English...")
+
+        user_bot = self.users.setdefault(user_id, UserBot(user_id, chat_id))
+        if user_bot.state_bot == StateUser.start:
+            self.bot.send_message(chat_id, self.menu_greeting())
+        user_bot.state_bot = StateUser.dict
 
         markup = types.ReplyKeyboardMarkup(row_width=2)
         word_dict = self.service.next_word(user_bot)
         if word_dict is None:
             self.bot.send_message(chat_id, user_bot.state_request.value)
             return
+        self.bot.send_message(message.chat.id, f'У вас слов в словаре: {user_bot.count_words}')
+
         target_word = word_dict.dict_['word_rus']
         translate = word_dict.dict_['word_en']
         others = word_dict.dict_['others']
@@ -198,7 +206,7 @@ class BotController:
         """
         user_bot = self.users.setdefault(message.from_user.id, UserBot(message.from_user.id, message.chat.id))
         if user_bot.state_bot != StateUser.dict:
-            self.bot.send_message(message.chat.id, 'Надо ввести команду /dict')
+            self.bot.send_message(message.chat.id, 'Надо ввести команду /start')
             return
         user_bot.state_bot = StateUser.key_del
         mess = "Напишите слово, которое вы хотите удалить"
@@ -224,7 +232,7 @@ class BotController:
         """
         user_bot = self.users.setdefault(message.from_user.id, UserBot(message.from_user.id, message.chat.id))
         if user_bot.state_bot != StateUser.dict:
-            self.bot.send_message(message.chat.id, 'Надо ввести команду /dict')
+            self.bot.send_message(message.chat.id, 'Надо ввести команду /start')
             return
         user_bot.state_bot = StateUser.key_add
         mess = "Напишите слово, которое вы хотите добавить"
@@ -233,10 +241,11 @@ class BotController:
     def _add_word(self, message):
         user_bot = self.users.setdefault(message.from_user.id, UserBot(message.from_user.id, message.chat.id))
         result = self.service.add_word(user_bot, message.text)
-        mess = f"Слово: {message.text}, было добавлено" if result else user_bot.state_request.value
+        mess = f"Слово: {message.text} - {result}, было добавлено" if result else user_bot.state_request.value
         self.logger.log(
             f'user_id={message.from_user.id}, chat_id={message.chat.id} - добавление слова {message.text}: {mess}')
         self.bot.send_message(message.chat.id, mess)
+        self.bot.send_message(message.chat.id, f'У вас слов в словаре: {user_bot.count_words}')
         self._next_cards(message)
 
     @staticmethod
@@ -267,3 +276,17 @@ class BotController:
         buttons.extend([next_btn, add_word_btn, delete_word_btn])
 
         return buttons
+
+    @staticmethod
+    def menu_greeting() -> str:
+        mess = ['Привет 👋', 'Давай попрактикуемся в английском языке.',
+                'Тренировки можешь проходить в удобном для себя темпе.'
+                'У тебя есть возможность использовать тренажёр, как конструктор,'
+                'и собирать свою собственную базу для обучения.',
+                'Для этого воспрользуйся инструментами:',
+                f'{BotController.__COMMANDS['ADD_WORD']}',
+                f'{BotController.__COMMANDS['DELETE_WORD']}.',
+                'Ну что, начнём ⬇️'
+        ]
+        return BotController.show_hint(*mess)
+

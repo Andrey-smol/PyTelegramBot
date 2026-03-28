@@ -39,3 +39,11 @@ INFO [26-3-2026__14:36:35] Запуск телеграмм бота
 INFO [26-3-2026__14:37:20] user_id=5087185874, chat_id=5087185874 - команда /dict
 INFO [26-3-2026__20:47:11] Запуск телеграмм бота
 INFO [26-3-2026__20:50:0] Исключение BaseException - 
+INFO [28-3-2026__9:0:43] Запуск телеграмм бота
+ERROR [28-3-2026__9:0:48] [91m[Exception] [28-3-2026__9:0:48] [_check_telegram_token] Error: Telegram token check failed: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=5.0)[0m
+INFO [28-3-2026__9:1:52] Запуск телеграмм бота
+ERROR [28-3-2026__9:1:57] [91m[Exception] [28-3-2026__9:1:57] [_check_telegram_token] Error: Telegram token check failed: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=5.0)[0m
+INFO [28-3-2026__9:6:5] Запуск телеграмм бота
+ERROR [28-3-2026__9:6:10] [91m[Exception] [28-3-2026__9:6:10] [_check_telegram_token] Error: Telegram token check failed: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=5.0)[0m
+INFO [28-3-2026__9:44:5] Запуск телеграмм бота
+ERROR [28-3-2026__9:44:10] [91m[Exception] [28-3-2026__9:44:10] [_check_telegram_token] Error: Telegram token check failed: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=5.0)[0m

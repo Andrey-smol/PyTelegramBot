@@ -3,11 +3,9 @@ import random
 import re
 from typing import Optional
 
-from pymorphy2 import MorphAnalyzer
-
 from dictionary.yandex_dict import YandexDictionary
-from model.enum_state_request import StateRequest
-from model.user_bot import UserBot
+from utils.enum_state_request import StateRequest
+from utils.user_bot import UserBot
 from service.next_dict import NextDict
 
 import inspect
@@ -18,13 +16,13 @@ if not hasattr(inspect, 'getargspec'):
         from collections import namedtuple
         ArgsSpec = namedtuple('ArgsSpec', 'args varargs keywords defaults')
         return ArgsSpec(spec.args, spec.varargs, spec.varkw, spec.defaults)
-
-
     inspect.getargspec = getargspec
-import pymorphy2
+
+from pymorphy2 import MorphAnalyzer  # морфологический анализатор для русского языка
 
 
 class Service:
+
     __INITIAL_WORDS_FOR_USER = 10
     morph_analyzer = MorphAnalyzer(
         path=os.path.join(os.getcwd(), '.venv', 'Lib', 'site-packages', 'pymorphy2_dicts_ru', 'data'))
@@ -51,26 +49,26 @@ class Service:
         user_bot.state_request = StateRequest.no_word_into_db
         return False
 
-    def add_word(self, user_bot: UserBot, word) -> bool:
+    def add_word(self, user_bot: UserBot, word) -> Optional[str]:
         if word and len(word.strip()) >= 1:
             word = word.strip()
             if self._is_russian_word(word):
                 word_en = self._dictionary(word)
                 if word_en is None:
                     user_bot.state_request = StateRequest.error_translation
-                    return False
+                    return None
                 user_id = user_bot.user_id
                 result = self.repo.add_word((word, word_en), user_id)
                 if result:
                     user_bot.count_words += 1
-                    return True
+                    return word_en
                 else:
                     user_bot.state_request = StateRequest.error_add_word
             else:
                 user_bot.state_request = StateRequest.no_russian_word
         else:
             user_bot.state_request = StateRequest.error_input_word
-        return False
+        return None
 
     def next_word(self, user_bot: UserBot) -> Optional[NextDict]:
         user_id = user_bot.user_id
@@ -83,9 +81,11 @@ class Service:
 
         if count_words == 0:
             count_words = self.repo.get_count_words_user(user_id)
-        if count_words == 0:
-            user_bot.state_request = StateRequest.no_words_for_user
-            return None
+            if count_words == 0:
+                count_words = self.repo.init_start_words_for_user(user_id)
+                if count_words == 0:
+                    user_bot.state_request = StateRequest.no_words_for_user
+                    return None
         word = self.repo.get_word_by_user_id(user_id, next_request)
         if word is None:
             user_bot.state_request = StateRequest.no_words_for_user
@@ -116,8 +116,10 @@ class Service:
         russian = bool(re.fullmatch(r'[А-ЯЁа-яё\-]+', word))
         if not russian:
             return False
-        parses = Service.morph_analyzer.parse(word)
-        return bool(parses) and any('UNKN' not in p.tag for p in parses)
+        if Service.morph_analyzer:
+            parses = Service.morph_analyzer.parse(word)
+            return bool(parses) and any('UNKN' not in p.tag for p in parses)
+        return True
 
     @staticmethod
     def _dictionary(word_rus: str) -> Optional[str]:

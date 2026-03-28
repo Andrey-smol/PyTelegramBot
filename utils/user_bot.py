@@ -1,5 +1,5 @@
-from model.enum_state import StateUser
-from model.enum_state_request import StateRequest
+from utils.enum_state import StateUser
+from utils.enum_state_request import StateRequest
 
 
 class UserBot:
