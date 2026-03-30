@@ -10,10 +10,12 @@ if __name__ == '__main__':
     print('bot running')
     logger = OperationLogger()
     logger.log("Запуск телеграмм бота")
+    controller = None
     try:
         BotController._check_telegram_token()
-        controller_ = BotController(Service(Repository()))
-        controller_.start_bot()
+        service = Service(Repository())
+        controller = BotController(service)
+        controller.start_bot()
     except MyException as me:
         logger.log(me.message)
         print(me.message)
@@ -22,5 +24,6 @@ if __name__ == '__main__':
         print(e)
     finally:
         logger.flush_log()
-        controller_.stop_bot_()
+        if controller:
+            controller.stop_bot_()
     sys.exit(1)

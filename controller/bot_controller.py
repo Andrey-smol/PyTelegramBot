@@ -241,7 +241,7 @@ class BotController:
     def _add_word(self, message):
         user_bot = self.users.setdefault(message.from_user.id, UserBot(message.from_user.id, message.chat.id))
         result = self.service.add_word(user_bot, message.text)
-        mess = f"Слово: {message.text} - {result}, было добавлено" if result else user_bot.state_request.value
+        mess = f"Слово: {result[0]} - {result[1]}, было добавлено" if result else user_bot.state_request.value
         self.logger.log(
             f'user_id={message.from_user.id}, chat_id={message.chat.id} - добавление слова {message.text}: {mess}')
         self.bot.send_message(message.chat.id, mess)

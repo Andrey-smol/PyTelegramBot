@@ -49,19 +49,20 @@ class Service:
         user_bot.state_request = StateRequest.no_word_into_db
         return False
 
-    def add_word(self, user_bot: UserBot, word) -> Optional[str]:
+    def add_word(self, user_bot: UserBot, word) -> Optional[tuple]:
         if word and len(word.strip()) >= 1:
-            word = word.strip()
-            if self._is_russian_word(word):
-                word_en = self._dictionary(word)
+            word_info = self.check_single_word(word)
+            word_rus = word_info[0]
+            if self._is_russian_word(word_rus):
+                word_en = self._dictionary(word_rus) if len(word_info) == 1  else word_info[1]
                 if word_en is None:
                     user_bot.state_request = StateRequest.error_translation
                     return None
                 user_id = user_bot.user_id
-                result = self.repo.add_word((word, word_en), user_id)
+                result = self.repo.add_word((word_rus, word_en), user_id)
                 if result:
                     user_bot.count_words += 1
-                    return word_en
+                    return (word_rus, word_en)
                 else:
                     user_bot.state_request = StateRequest.error_add_word
             else:
@@ -125,3 +126,9 @@ class Service:
     def _dictionary(word_rus: str) -> Optional[str]:
         word_en = YandexDictionary.translate_word(word_rus)
         return None if word_en == '' else word_en
+
+    @staticmethod
+    def check_single_word(text_) -> tuple:
+        s = text_.strip()
+        parts = [w.strip() for w in s.split(',') if w]
+        return tuple(parts)

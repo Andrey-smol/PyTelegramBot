@@ -1,6 +1,7 @@
 import requests
 
 from config.config import Config_
+from exception.exception import MyException
 
 
 class YandexDictionary:
@@ -9,17 +10,22 @@ class YandexDictionary:
 
     @classmethod
     def translate_word(cls, word) -> str:
-        # ваш код здесь
-        trans_word = ''
+        if not word:
+            return ''
         params = {
             'key': cls.__TOKEN,
             'lang': 'ru-en',
             'text': word
         }
-        response = requests.get(cls.__URL, params=params)
-        # Преобразуем JSON-ответ в Python-словарь
-        data = response.json()
-        # Проверяем, содержит ли ответ переводы
-        if data.get('def'):
-            trans_word = data['def'][0]['tr'][0]['text']
-        return trans_word
+        try:
+            trans_word = ''
+            response = requests.get(cls.__URL, params=params, timeout=5)
+            response.raise_for_status()
+            # Преобразуем JSON-ответ в Python-словарь
+            data = response.json()
+            # Проверяем, содержит ли ответ переводы
+            if data.get('def'):
+                trans_word = data['def'][0]['tr'][0]['text']
+            return trans_word
+        except Exception as e:
+            return ''

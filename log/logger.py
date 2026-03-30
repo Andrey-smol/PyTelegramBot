@@ -10,7 +10,7 @@ class OperationLogger:
     __LOG_FILE = "logOperation.log"
     __LOG_ZIP = 'log_zip.zip'
     __MAX_BUFFER_ENTRIES = 20
-    __MAX_SIZE_FILE = 10_000_000
+    __MAX_SIZE_FILE = 10_485_760
     __buf = []
     _instance = None
     __initialized = False

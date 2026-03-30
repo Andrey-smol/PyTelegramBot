@@ -3,8 +3,7 @@ import os
 
 class Config_:
     __BOT_TOKEN = os.getenv('BOT_TOKEN', '')
-    __YANDEX_DICT_TOKEN = os.getenv('YANDEX_DICT_TOKEN',
-                                    '')
+    __YANDEX_DICT_TOKEN = os.getenv('YANDEX_DICT_TOKEN', '')
     __URL_YANDEX_DICTIONARY = 'https://dictionary.yandex.net/api/v1/dicservice.json/lookup'
     __TELEGRAM_API = "https://api.telegram.org"
 
@@ -49,3 +48,4 @@ class Config_:
     @classmethod
     def url_yandex_dictionary(cls):
         return cls.__URL_YANDEX_DICTIONARY
+

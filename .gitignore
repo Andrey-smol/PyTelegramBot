@@ -1,11 +1,10 @@
 HELP.md
 
 ### GiGaIDE ###
-.gigaide
-.idea
-.vent
-WorkingWithFiles.iml
-final.txt
+.gigaide/
+.idea/
+.venv/
+__pycache__/
 
 ### VS Code ###
 .vscode/
